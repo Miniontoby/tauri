@@ -34,6 +34,8 @@ use std::{
 /// Items to help with parsing content into a [`Config`].
 pub mod parse;
 
+use crate::PixelUnit;
+
 pub use self::parse::parse;
 
 /// An URL to open on a Tauri webview window.
@@ -856,6 +858,9 @@ pub struct WindowConfig {
   pub skip_taskbar: bool,
   /// The initial window theme. Defaults to the system theme. Only implemented on Windows and macOS 10.14+.
   pub theme: Option<crate::Theme>,
+  /// Pixel unit type. Effective to size and position related settings
+  #[serde(default, alias = "size-unit")]
+  pub pixel_unit: PixelUnit,
 }
 
 impl Default for WindowConfig {
@@ -884,6 +889,7 @@ impl Default for WindowConfig {
       always_on_top: false,
       skip_taskbar: false,
       theme: None,
+      pixel_unit: Default::default(),
     }
   }
 }
@@ -2916,6 +2922,17 @@ mod build {
     }
   }
 
+  impl ToTokens for crate::PixelUnit {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+      let prefix = quote! { ::tauri::utils::PixelUnit };
+
+      tokens.append_all(match self {
+        Self::Logical => quote! { #prefix::Logical },
+        Self::Physical => quote! { #prefix::Physical },
+      })
+    }
+  }
+
   impl ToTokens for WindowConfig {
     fn to_tokens(&self, tokens: &mut TokenStream) {
       let label = str_lit(&self.label);
@@ -2941,6 +2958,7 @@ mod build {
       let always_on_top = self.always_on_top;
       let skip_taskbar = self.skip_taskbar;
       let theme = opt_lit(self.theme.as_ref());
+      let pixel_unit = &self.pixel_unit;
 
       literal_struct!(
         tokens,
@@ -2967,7 +2985,8 @@ mod build {
         decorations,
         always_on_top,
         skip_taskbar,
-        theme
+        theme,
+        pixel_unit
       );
     }
   }
